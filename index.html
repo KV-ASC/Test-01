@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Open Leaf Library — NCERT PDFs</title>
+
+<!-- Three.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+
+<style>
+  :root{
+    --bg: #F0E6DA;
+    --accent: #75070C;
+    --accent-dark: #520509;
+  }
+  html,body{height:100%; margin:0; font-family:Inter, Arial, sans-serif; background:var(--bg); -webkit-font-smoothing:antialiased}
+  #bg-canvas { position:fixed; inset:0; width:100%; height:100%; z-index:0; display:block; }
+
+  .page { position:relative; z-index:5; width:100%; box-sizing:border-box; }
+
+  /* Home */
+  #home { min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:28px 20px; color:var(--accent); }
+  #home h1{font-size:calc(28px + 4vw); margin:0 0 10px; font-weight:700}
+  .btn{ background:var(--accent); color:#fff; border:none; padding:12px 28px; border-radius:12px; font-size:16px; cursor:pointer; box-shadow:0 8px 22px rgba(117,7,12,.18); transition:transform .25s }
+  .btn:hover{ transform:translateY(-4px) }
+
+  /* Books */
+  #books{ display:none; padding:22px; min-height:100vh; color:var(--accent); }
+  .backBtn{ background:var(--accent); color:#fff; padding:10px 16px; border-radius:10px; border:none; cursor:pointer; margin-bottom:14px; }
+  #searchBar{ width:100%; max-width:520px; padding:12px 14px; border-radius:12px; border:2px solid var(--accent); margin-bottom:18px; font-size:15px; }
+
+  .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:16px; max-width:1100px; margin:10px auto; }
+  .book{ background:rgba(255,255,255,0.98); border-radius:12px; padding:10px; box-shadow:0 6px 16px rgba(0,0,0,0.06); text-align:center; font-weight:700; color:var(--accent); cursor:pointer; transition: transform .32s, box-shadow .32s; overflow:hidden; }
+  .book:hover{ transform:translateY(-8px) scale(1.03); box-shadow:0 18px 36px rgba(117,7,12,0.18) }
+  .cover{ width:100%; height:200px; object-fit:cover; border-radius:8px; display:block; box-shadow: 0 6px 10px rgba(0,0,0,0.06); }
+  .title{ margin-top:8px; font-size:14px; }
+  .subtitle{ font-size:12px; opacity:.8; margin-top:4px; font-weight:500; color:#4a2a2a; }
+
+  .reveal{ opacity:0; transform: translateY(20px); transition: all .6s cubic-bezier(.2,.9,.3,1); }
+  .reveal.visible{ opacity:1; transform:none; }
+
+  #militarySection{ max-width:1100px; margin:22px auto 60px; display:none; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:16px; }
+
+  /* PDF modal */
+  #pdfModal{ position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:center; justify-content:center; z-index:999; }
+  #pdfBox{ width:92%; max-width:1000px; height:82vh; background:white; border-radius:10px; overflow:hidden; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+  #pdfClose{ position:absolute; right:12px; top:8px; background:var(--accent); color:#fff; border:none; padding:8px 10px; border-radius:8px; cursor:pointer; z-index:10; }
+  #pdfFrame{ width:100%; height:100%; border:0; }
+
+  @media(max-width:520px){ .grid{ grid-template-columns: repeat(2, minmax(120px,1fr)); } .cover{ height:150px; } }
+  footer{ text-align:center; padding:18px 10px; color:var(--accent); font-size:13px; opacity:.95; }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- Home -->
+<div id="home" class="page">
+  <h1 class="reveal">Open Leaf Library</h1>
+  <p class="reveal">Students ke liye free, clean aur ad-free digital library — CBSE Class 11 books, storybooks and military titles.</p>
+  <p class="reveal" style="font-size:14px"><strong>Contact:</strong> kvascbgr@gmail.com • Victoria Road, Bangalore - 560047</p>
+  <div style="height:16px"></div>
+  <button class="btn reveal" onclick="openBooks()">Browse Books</button>
+</div>
+
+<!-- Books -->
+<div id="books" class="page" aria-hidden="true">
+  <button class="backBtn reveal" onclick="backHome()">← Back</button>
+
+  <div style="max-width:1100px; margin: 8px auto 0; text-align:center;">
+    <input id="searchBar" class="reveal" placeholder="Search (e.g. physics, biology, sam manekshaw)..." oninput="filterBooks()" />
+  </div>
+
+  <div id="bookGrid" class="grid" style="margin-top:18px;">
+    <!-- NCERT books include data-pdf attribute pointing to official NCERT PDF -->
+    <div class="book reveal" data-search="biology class 11 ncert" data-pdf="https://ncert.nic.in/textbook/pdf/kebo1ps.pdf" title="Biology Class 11">
+      <img class="cover" src="https://ncert.nic.in/textbook/images/ke_bo_cover.jpg" alt="Biology Class 11">
+      <div class="title">Biology Class 11</div><div class="subtitle">NCERT</div>
+    </div>
+
+    <div class="book reveal" data-search="physics class 11 ncert" data-pdf="https://ncert.nic.in/textbook/pdf/keph101.pdf" title="Physics Class 11">
+      <img class="cover" src="https://ncert.nic.in/textbook/images/ke_ph_cover.jpg" alt="Physics Class 11">
+      <div class="title">Physics Class 11</div><div class="subtitle">NCERT</div>
+    </div>
+
+    <div class="book reveal" data-search="chemistry class 11 ncert" data-pdf="https://ncert.nic.in/textbook/pdf/kech1ps.pdf" title="Chemistry Class 11">
+      <img class="cover" src="https://ncert.nic.in/textbook/images/ke_ch_cover.jpg" alt="Chemistry Class 11">
+      <div class="title">Chemistry Class 11</div><div class="subtitle">NCERT</div>
+    </div>
+
+    <div class="book reveal" data-search="mathematics class 11 ncert" data-pdf="https://ncert.nic.in/textbook/pdf/kemh1ps.pdf" title="Mathematics Class 11">
+      <img class="cover" src="https://ncert.nic.in/textbook/images/ke_mh_cover.jpg" alt="Mathematics Class 11">
+      <div class="title">Maths Class 11</div><div class="subtitle">NCERT</div>
+    </div>
+
+    <div class="book reveal" data-search="english hornbill ncert" data-pdf="https://ncert.nic.in/textbook.php?kehb1=0-14" title="English Hornbill">
+      <img class="cover" src="https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?q=80&w=600&auto=format&fit=crop" alt="Hornbill">
+      <div class="title">English Hornbill</div><div class="subtitle">NCERT</div>
+    </div>
+
+    <div class="book reveal" data-search="accountancy class 11 ncert" data-pdf="https://ncert.nic.in/textbook/pdf/keac101.pdf" title="Accountancy Class 11">
+      <img class="cover" src="https://ncert.nic.in/textbook/images/ke_ac_cover.jpg" alt="Accountancy">
+      <div class="title">Accountancy Class 11</div><div class="subtitle">NCERT</div>
+    </div>
+
+    <div class="book reveal" data-search="business studies class 11" title="Business Studies Class 11">
+      <img class="cover" src="https://dummyimage.com/600x900/4b7a3b/ffffff&text=Business+Studies+Class+11" alt="Business Studies">
+      <div class="title">Business Studies Class 11</div><div class="subtitle">CBSE</div>
+    </div>
+
+    <div class="book reveal" data-search="computer science class 11" title="Computer Science Class 11">
+      <img class="cover" src="https://images.unsplash.com/photo-1533750349088-cd871a92f312?q=80&w=600&auto=format&fit=crop" alt="Computer Science">
+      <div class="title">Computer Science Class 11</div><div class="subtitle">CBSE</div>
+    </div>
+
+    <!-- Humanities -->
+    <div class="book reveal" data-search="history class 11 ncert" title="History Class 11">
+      <img class="cover" src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=600&auto=format&fit=crop" alt="History">
+      <div class="title">History Class 11</div><div class="subtitle">NCERT</div>
+    </div>
+
+    <div class="book reveal" data-search="geography class 11 ncert" title="Geography Class 11">
+      <img class="cover" src="https://images.unsplash.com/photo-1505765050287-6e4a9a8a8f7c?q=80&w=600&auto=format&fit=crop" alt="Geography">
+      <div class="title">Geography Class 11</div><div class="subtitle">NCERT</div>
+    </div>
+
+    <div class="book reveal" data-search="economics class 11" title="Economics Class 11">
+      <img class="cover" src="https://dummyimage.com/600x900/7a4b9b/ffffff&text=Economics+Class+11" alt="Economics">
+      <div class="title">Economics Class 11</div><div class="subtitle">CBSE</div>
+    </div>
+
+    <!-- Stories & Fiction -->
+    <div class="book reveal" data-search="story book jungle children" title="Story Book">
+      <img class="cover" src="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=600&auto=format&fit=crop" alt="Story Book">
+      <div class="title">Story Book - Jungle</div><div class="subtitle">Children</div>
+    </div>
+
+    <div class="book reveal" data-search="harry potter goblet of fire" title="Harry Potter">
+      <img class="cover" src="https://covers.openlibrary.org/b/id/7984916-L.jpg" alt="Harry Potter">
+      <div class="title">Harry Potter — Goblet of Fire</div><div class="subtitle">Fiction</div>
+    </div>
+
+    <!-- Military card -->
+    <div class="book reveal" id="militaryCard" data-search="military books" data-pdf="" title="Military Books">
+      <img class="cover" src="https://images.unsplash.com/photo-1549880338-65ddcdfd017b?q=80&w=600&auto=format&fit=crop" alt="Military">
+      <div class="title">Military Books</div><div class="subtitle">Sam Manekshaw, Kargil & more</div>
+    </div>
+
+  </div>
+
+  <!-- Military expanded grid (hidden by default) -->
+  <div id="militarySection" class="grid">
+    <div class="book reveal" data-search="sam manekshaw book" title="Sam Manekshaw">
+      <img class="cover" src="https://images.unsplash.com/photo-1526772662000-3f88f10405ff?q=80&w=600&auto=format&fit=crop" alt="Sam Manekshaw">
+      <div class="title">Sam Manekshaw</div><div class="subtitle">Biography</div>
+    </div>
+
+    <div class="book reveal" data-search="kargil war book" title="Kargil War">
+      <img class="cover" src="https://images.unsplash.com/photo-1549888834-3c3a73a0d1b0?q=80&w=600&auto=format&fit=crop" alt="Kargil">
+      <div class="title">Kargil War Books</div><div class="subtitle">History</div>
+    </div>
+
+    <div class="book reveal" data-search="indian army books" title="Indian Army Books">
+      <img class="cover" src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=600&auto=format&fit=crop" alt="Indian Army">
+      <div class="title">Indian Army Books</div><div class="subtitle">Military</div>
+    </div>
+
+    <div class="book reveal" data-search="military strategy book" title="Military Strategy">
+      <img class="cover" src="https://dummyimage.com/600x900/222222/ffffff&text=Military+Strategy" alt="Strategy">
+      <div class="title">Military Strategy</div><div class="subtitle">Strategy</div>
+    </div>
+
+    <div class="book reveal" data-search="airforce books india" title="Air Force">
+      <img class="cover" src="https://images.unsplash.com/photo-1505575967453-3da8e6a4b8c3?q=80&w=600&auto=format&fit=crop" alt="Air Force">
+      <div class="title">Indian Air Force Books</div><div class="subtitle">Air Force</div>
+    </div>
+  </div>
+</div>
+
+<!-- PDF modal -->
+<div id="pdfModal" role="dialog" aria-hidden="true">
+  <div id="pdfBox">
+    <button id="pdfClose" aria-label="Close PDF">Close</button>
+    <iframe id="pdfFrame" src="" frameborder="0" aria-hidden="false"></iframe>
+  </div>
+</div>
+
+<footer class="page">Open Leaf Library • No Ads • No Errors</footer>
+
+<script>
+/* ---------- Three.js background (same as before) ---------- */
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 1000);
+  camera.position.set(0, 20, 80);
+
+  const amb = new THREE.AmbientLight(0xffffff, 0.6);
+  const dir = new THREE.DirectionalLight(0xffe9e9, 0.5);
+  dir.position.set(0,50,100);
+  scene.add(amb, dir);
+
+  const seg = (innerWidth < 600) ? 80 : 160;
+  const geometry = new THREE.PlaneGeometry(200, 120, seg, Math.round(seg*0.6));
+  geometry.rotateX(-Math.PI/2);
+
+  const pos = geometry.attributes.position;
+  const basePos = new Float32Array(pos.array);
+
+  const material = new THREE.MeshStandardMaterial({
+    color: 0x7a0b0b,
+    transparent: true,
+    opacity: 0.17,
+    roughness: 0.75,
+    metalness: 0.1,
+    side: THREE.DoubleSide,
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = -10;
+  scene.add(mesh);
+
+  const geometry2 = new THREE.PlaneGeometry(180, 100, seg*0.6, seg*0.4);
+  geometry2.rotateX(-Math.PI/2);
+  const material2 = new THREE.MeshStandardMaterial({ color:0x4d0404, transparent:true, opacity:0.12, roughness:0.9, side:THREE.DoubleSide });
+  const mesh2 = new THREE.Mesh(geometry2, material2);
+  mesh2.position.y = -12.6;
+  mesh2.rotation.y = 0.02;
+  scene.add(mesh2);
+
+  window.addEventListener('resize', ()=> {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+  });
+
+  let t = 0;
+  function animate(){
+    t += 0.01;
+    for (let i=0;i<pos.count;i++){
+      const ix = i*3;
+      const x = basePos[ix], y = basePos[ix+1], z = basePos[ix+2];
+      const wave = Math.sin((x*0.02) + t*1.1) * 2.5
+                 + Math.cos((z*0.03) + t*0.6) * 1.2
+                 + Math.sin((x+z)*0.01 + t*0.9) * 0.9;
+      pos.array[ix+1] = y + wave;
+    }
+    pos.needsUpdate = true;
+
+    const pos2 = geometry2.attributes.position;
+    for (let i=0;i<pos2.count;i++){
+      const ix = i*3;
+      pos2.array[ix+1] = Math.sin(i*0.05 + t*0.8) * 0.7;
+    }
+    pos2.needsUpdate = true;
+
+    camera.position.x = Math.sin(t*0.2) * 6;
+    camera.lookAt(0,0,0);
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+/* ---------- UI and PDF viewer ---------- */
+(function(){
+  const home = document.getElementById('home');
+  const books = document.getElementById('books');
+  const bookGrid = document.getElementById('bookGrid');
+  const militarySection = document.getElementById('militarySection');
+  const pdfModal = document.getElementById('pdfModal');
+  const pdfFrame = document.getElementById('pdfFrame');
+  const pdfClose = document.getElementById('pdfClose');
+
+  // show home reveals
+  document.querySelectorAll('#home .reveal').forEach((el,i)=> setTimeout(()=> el.classList.add('visible'), 120 + i*120));
+
+  window.openBooks = function(){
+    home.style.opacity = 0;
+    setTimeout(()=> {
+      home.style.display = 'none';
+      books.style.display = 'block';
+      Array.from(document.querySelectorAll('#bookGrid .reveal')).forEach((el,i)=> setTimeout(()=> el.classList.add('visible'), 80 + i*60));
+    }, 420);
+    window.scrollTo({top:0, behavior:'instant'});
+  };
+
+  window.backHome = function(){
+    books.style.display = 'none';
+    militarySection.style.display = 'none';
+    home.style.display = 'flex';
+    home.style.opacity = 0;
+    setTimeout(()=> home.style.opacity = 1, 30);
+  };
+
+  window.filterBooks = function(){
+    const q = document.getElementById('searchBar').value.trim().toLowerCase();
+    const nodes = document.querySelectorAll('#bookGrid .book, #militarySection .book');
+    nodes.forEach(n => {
+      const key = (n.dataset.search || n.innerText).toLowerCase();
+      n.style.display = (q === '' || key.includes(q)) ? '' : 'none';
+    });
+  };
+
+  // Clicking books:
+  document.addEventListener('click', (e)=>{
+    const b = e.target.closest('.book');
+    if (!b) return;
+
+    // If the card has data-pdf -> open modal viewer
+    const pdf = b.getAttribute('data-pdf');
+    if (pdf && pdf.trim().length > 5) {
+      openPdfModal(pdf);
+      return;
+    }
+
+    // military card toggles expanded list
+    if (b.id === 'militaryCard') {
+      if (militarySection.style.display === 'grid') {
+        militarySection.style.display = 'none';
+        window.scrollTo({top:0, behavior:'smooth'});
+      } else {
+        militarySection.style.display = 'grid';
+        Array.from(militarySection.querySelectorAll('.reveal')).forEach((el,i)=> { el.classList.remove('visible'); setTimeout(()=> el.classList.add('visible'), 80 + i*70); });
+        setTimeout(()=> militarySection.scrollIntoView({behavior:'smooth', block:'center'}), 120);
+      }
+      return;
+    }
+
+    // otherwise open google shopping for that book
+    const name = b.getAttribute('data-search') || b.innerText;
+    const url = "https://www.google.com/search?tbm=shop&q=" + encodeURIComponent(name + " book");
+    window.open(url, "_blank");
+  });
+
+  function openPdfModal(url){
+    // use Google Docs viewer for nicer embed if remote PDF has CORS issues:
+    // use direct NCERT link where possible; for other pdfs, try Google viewer fallback
+    const useGoogleViewer = url.includes('ncert.nic.in') ? false : true;
+    if (useGoogleViewer) {
+      pdfFrame.src = "https://docs.google.com/gview?url=" + encodeURIComponent(url) + "&embedded=true";
+    } else {
+      pdfFrame.src = url;
+    }
+    pdfModal.style.display = 'flex';
+    pdfModal.setAttribute('aria-hidden','false');
+  }
+
+  pdfClose.addEventListener('click', ()=> {
+    pdfFrame.src = "";
+    pdfModal.style.display = 'none';
+    pdfModal.setAttribute('aria-hidden','true');
+  });
+
+  // reveal observer
+  const observer = new IntersectionObserver((entries)=> {
+    entries.forEach(en => { if (en.isIntersecting) en.target.classList.add('visible'); });
+  }, {threshold:0.06});
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+})();
+</script>
+</body>
+</html>
